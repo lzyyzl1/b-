@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>B站视频标签统计</title>
+<style>
+  :root {
+    --pink: #fb7299;
+    --blue: #00aeec;
+    --bg: #f5f7fa;
+    --text: #18191c;
+    --sub: #61666d;
+    --line: #e3e5e7;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  header {
+    background: linear-gradient(120deg, var(--pink), var(--blue));
+    border-radius: 18px; padding: 26px 30px; color: #fff;
+    box-shadow: 0 10px 30px rgba(251, 114, 153, .28); margin-bottom: 22px;
+  }
+  header h1 { font-size: 23px; font-weight: 700; letter-spacing: .5px; }
+  header p { margin-top: 8px; font-size: 13.5px; opacity: .92; line-height: 1.6; }
+
+  .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card > h3 { font-size: 15px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card > h3::before {
+    content: ""; width: 4px; height: 15px; border-radius: 2px;
+    background: linear-gradient(180deg, var(--pink), var(--blue));
+  }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  input[type=text] {
+    flex: 1; min-width: 220px; height: 44px; padding: 0 14px; font-size: 14px;
+    border: 1.5px solid var(--line); border-radius: 11px; outline: none; transition: .18s; background: #fafbfc;
+  }
+  input[type=text]:focus { border-color: var(--blue); background: #fff; }
+  .btn {
+    height: 44px; padding: 0 24px; border: none; border-radius: 11px; cursor: pointer;
+    font-size: 14.5px; font-weight: 600; color: #fff; transition: .18s;
+    background: linear-gradient(120deg, var(--pink), var(--blue));
+    box-shadow: 0 4px 14px rgba(251, 114, 153, .3);
+  }
+  .btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+  .btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+  .btn.ghost { background: #fff; color: var(--sub); border: 1.5px solid var(--line); box-shadow: none; padding: 0 16px; }
+  .hint { font-size: 12.5px; color: var(--sub); margin-top: 10px; line-height: 1.7; }
+
+  .state { text-align: center; padding: 40px 10px; color: var(--sub); font-size: 14px; }
+  .spinner {
+    width: 30px; height: 30px; margin: 0 auto 14px; border-radius: 50%;
+    border: 3px solid var(--line); border-top-color: var(--pink); animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .err {
+    background: #fff1f3; color: #d0364b; border: 1px solid #ffd7de;
+    border-radius: 11px; padding: 12px 16px; font-size: 13.5px; margin-bottom: 14px;
+  }
+
+  .video-bar { font-size: 13px; color: var(--sub); margin-bottom: 6px; line-height: 1.8; }
+  .video-bar b { color: var(--text); font-size: 16px; }
+
+  .dist-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; font-size: 12.5px; }
+  .dist-row .lb { width: 110px; color: var(--sub); flex-shrink: 0; text-align: right; font-weight: 600; }
+  .dist-row .track { flex: 1; height: 16px; background: #f2f4f6; border-radius: 8px; overflow: hidden; }
+  .dist-row .fill {
+    height: 100%; border-radius: 8px; min-width: 3px;
+    background: linear-gradient(90deg, var(--pink), var(--blue)); transition: width .5s ease;
+  }
+  .dist-row .vv { width: 170px; color: var(--sub); flex-shrink: 0; }
+  .dist-row .vv b { color: var(--text); font-size: 13.5px; }
+  .dist-row.clickable { cursor: pointer; border-radius: 8px; padding: 5px 6px; margin-left: -6px; transition: .15s; }
+  .dist-row.clickable:hover { background: #f3f6f9; }
+  .dist-row.clickable.on { background: linear-gradient(90deg, #fff2f6, #eef7ff); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .tile { background: linear-gradient(135deg, #fff6f9, #f2f9ff); border-radius: 12px; padding: 13px 15px; }
+  .tile span { font-size: 12px; color: var(--sub); }
+  .tile b { display: block; font-size: 21px; margin-top: 4px; letter-spacing: -.4px; }
+  .tile i { font-style: normal; font-size: 11.5px; color: var(--sub); }
+
+  .chart { background: #fafbfc; border-radius: 13px; padding: 16px; margin-top: 14px; }
+  .chart .hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .chart .hd h4 { font-size: 14px; }
+  .seg { display: inline-flex; background: #eef1f4; border-radius: 9px; padding: 3px; }
+  .seg button { border: none; background: transparent; padding: 5px 14px; border-radius: 7px; font-size: 12.5px; color: var(--sub); cursor: pointer; }
+  .seg button.on { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .chart svg { width: 100%; height: 180px; display: block; }
+  .chart .tip { font-size: 12.5px; color: var(--sub); margin-top: 8px; line-height: 1.7; }
+
+  .top-list { margin-top: 14px; }
+  .top-list div { font-size: 12.5px; color: var(--sub); padding: 5px 0; border-top: 1px dashed var(--line); display: flex; justify-content: space-between; gap: 12px; }
+  .top-list a { color: var(--text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-list a:hover { color: var(--blue); }
+  .link { font-size: 12.5px; color: var(--blue); text-decoration: none; font-weight: 600; }
+  .link:hover { text-decoration: underline; }
+
+  @media (max-width: 560px) {
+    header { padding: 20px; }
+    header h1 { font-size: 19px; }
+    .row { flex-direction: column; align-items: stretch; }
+    .btn { width: 100%; }
+    .dist-row .lb { width: 76px; }
+    .dist-row .vv { width: 130px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>B站视频标签统计</h1>
+    <p>输入视频 BV号查看它所有标签的播放量，或直接输入标签名查询该标签的总播放量与近 48 周新发布视频播放量变化。
+       播放量按该标签最热的前 20 个视频采样合计，每次查询都会自动记录快照用于绘制趋势。</p>
+  </header>
+
+  <div class="card">
+    <h3>按视频查标签</h3>
+    <div class="row">
+      <input type="text" id="video" placeholder="视频 BV号 / av号 / 链接" />
+      <select id="vpages" style="height:44px;padding:0 10px;font-size:14px;border-radius:11px;border:1.5px solid var(--line);background:#fafbfc">
+        <option value="2">2 页</option>
+        <option value="3" selected>3 页</option>
+        <option value="5">5 页</option>
+        <option value="10">10 页</option>
+      </select>
+      <button class="btn" id="btn-vtag">查询</button>
+    </div>
+    <div class="hint">列出该视频的全部标签（每页 20 个视频，页数越多实测覆盖越广、越慢）。点击任一标签即可展开它的「近 48 周新发布视频播放量」柱状图。</div>
+  </div>
+
+  <div class="card">
+    <h3>按标签查总播放量</h3>
+    <div class="row">
+      <input type="text" id="tagname" placeholder="标签名或 tag_id" />
+      <select id="tpages" style="height:44px;padding:0 10px;font-size:14px;border-radius:11px;border:1.5px solid var(--line);background:#fafbfc">
+        <option value="3">3 页</option>
+        <option value="5" selected>5 页</option>
+        <option value="10">10 页</option>
+        <option value="25">25 页</option>
+        <option value="50">50 页</option>
+      </select>
+      <button class="btn" id="btn-tag">查询</button>
+    </div>
+    <div class="hint">查看单个标签的全量播放量（实测头部 + 长尾外推）、使用视频数，以及近 48 周新发布视频的播放量变化柱状图。
+      页数越多实测部分越大、估算越准，但耗时越长（每页 20 个视频）。</div>
+  </div>
+
+  <div id="result-vtag"></div>
+  <div id="result-tag"></div>
+</div>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const num = (n) => n == null ? '-' : n.toLocaleString('zh-CN');
+  const loading = '<div class="state"><div class="spinner"></div>正在查询…</div>';
+
+  const BACKEND = 'http://127.0.0.1:5173';
+  const OFFLINE = '无法连接后端服务。请先在项目目录运行 <b>python web_app.py</b>，'
+    + '然后打开 <a href="http://127.0.0.1:5173" target="_blank" style="color:var(--blue)">http://127.0.0.1:5173</a>';
+
+  // 优先请求同源接口；失败（如通过 IDE 预览地址打开时）自动回退直连本机后端
+  async function call(path) {
+    let r;
+    try {
+      r = await fetch(path);
+    } catch (e1) {
+      try { r = await fetch(BACKEND + path); }
+      catch (e2) { throw new Error(OFFLINE); }
+    }
+    const j = await r.json().catch(() => ({ ok: false, message: '响应解析失败' }));
+    if (!j.ok) throw new Error(j.message || '查询失败');
+    return j;
+  }
+
+  const showErr = (box, e) => {
+    box.innerHTML = `<div class="err">查询失败：${e.message === OFFLINE ? OFFLINE : esc(e.message)}</div>`;
+  };
+
+  function fmtShort(n) {
+    if (n == null) return '-';
+    if (n >= 1e8) return (n / 1e8).toFixed(2) + '亿';
+    if (n >= 1e4) return (n / 1e4).toFixed(1) + '万';
+    return String(n);
+  }
+
+  /* ---------------- 曲线（SVG） ---------------- */
+  function chartHTML(series, name, mode, id) {
+    const unit = mode === 'day' ? '日' : '月';
+    const seg = `<span class="seg">
+      <button data-mode="day" class="${mode === 'day' ? 'on' : ''}">按日</button>
+      <button data-mode="month" class="${mode === 'month' ? 'on' : ''}">按月</button></span>`;
+
+    if (!series || series.length < 2) {
+      return `<div class="chart" id="${id}">
+        <div class="hd"><h4>#${esc(name)}# ${unit}播放量变化</h4>${seg}</div>
+        <div class="tip">当前只有 ${series ? series.length : 0} 个快照点，至少需要 2 个才能画出曲线。
+          每次查询都会自动记录快照，稍后再查一次即可看到趋势。</div></div>`;
+    }
+    const W = 620, H = 180, PL = 54, PR = 16, PT = 18, PB = 26;
+    const vs = series.map(s => s.view);
+    const lo = Math.min(...vs), hi = Math.max(...vs), span = (hi - lo) || 1;
+    const x = i => PL + i * (W - PL - PR) / (series.length - 1);
+    const y = v => PT + (1 - (v - lo) / span) * (H - PT - PB);
+    const pts = series.map((s, i) => `${x(i).toFixed(1)},${y(s.view).toFixed(1)}`).join(' ');
+    const area = `${PL},${H - PB} ${pts} ${x(series.length - 1).toFixed(1)},${H - PB}`;
+    const dots = series.map((s, i) =>
+      `<circle cx="${x(i).toFixed(1)}" cy="${y(s.view).toFixed(1)}" r="3" fill="#fff" stroke="#00aeec" stroke-width="2"/>`).join('');
+    const step = Math.ceil(series.length / 6);
+    const labels = series.map((s, i) =>
+      (series.length > 8 && i % step !== 0 && i !== series.length - 1) ? '' :
+      `<text x="${x(i).toFixed(1)}" y="${H - 8}" font-size="10" fill="#9499a0" text-anchor="middle">${esc(s.label)}</text>`).join('');
+    const delta = series[series.length - 1].view - series[0].view;
+    const pct = series[0].view ? delta / series[0].view * 100 : 0;
+    return `<div class="chart" id="${id}">
+      <div class="hd"><h4>#${esc(name)}# ${unit}播放量变化</h4>${seg}</div>
+      <svg viewBox="0 0 ${W} ${H}">
+        <defs><linearGradient id="gg${id}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fb7299" stop-opacity=".28"/>
+          <stop offset="100%" stop-color="#00aeec" stop-opacity=".03"/></linearGradient></defs>
+        <polyline points="${area}" fill="url(#gg${id})" stroke="none"/>
+        <polyline points="${pts}" fill="none" stroke="#00aeec" stroke-width="2.2" stroke-linejoin="round"/>
+        ${dots}
+        <text x="4" y="${PT + 6}" font-size="10" fill="#9499a0">${esc(fmtShort(hi))}</text>
+        <text x="4" y="${H - PB}" font-size="10" fill="#9499a0">${esc(fmtShort(lo))}</text>
+        ${labels}
+      </svg>
+      <div class="tip">${esc(series[0].label)} → ${esc(series[series.length - 1].label)}，共 ${series.length} 个快照点，
+        变化 <b style="color:${delta >= 0 ? '#d0364b' : '#0a9c5b'}">${delta >= 0 ? '+' : '-'}${esc(fmtShort(Math.abs(delta)))}
+        （${pct >= 0 ? '+' : '-'}${Math.abs(pct).toFixed(2)}%）</b>
+        ${esc(fmtShort(series[0].view))} → ${esc(fmtShort(series[series.length - 1].view))}</div></div>`;
+  }
+
+  function bindSeg(boxId, seriesMap, name) {
+    document.querySelectorAll(`#${boxId} .seg button`).forEach(b => {
+      b.onclick = () => {
+        const el = document.getElementById(boxId);
+        el.outerHTML = chartHTML(seriesMap[b.dataset.mode], name, b.dataset.mode, boxId);
+        bindSeg(boxId, seriesMap, name);
+      };
+    });
+  }
+
+  /* ---------------- 按视频查标签 ---------------- */
+  let lastTags = [];
+
+  $('#video').addEventListener('keydown', e => { if (e.key === 'Enter') doVtag(); });
+  $('#btn-vtag').onclick = doVtag;
+
+  async function doVtag() {
+    const v = $('#video').value.trim();
+    const box = $('#result-vtag');
+    if (!v) { box.innerHTML = '<div class="err">请输入视频 BV号 / av号 / 链接</div>'; return; }
+    box.innerHTML = loading;
+    $('#btn-vtag').disabled = true;
+    try {
+      const j = await call(`/api/vtag?video=${encodeURIComponent(v)}&pages=${$('#vpages').value}`);
+      lastTags = j.tags;
+      const maxView = Math.max(...j.tags.map(t => t.view_total || 0), 1);
+      const failed = j.tags.filter(t => t.view_total == null).length;
+      const warn = failed
+        ? `<div class="err">有 ${failed} 个标签的播放量采样未完成（多为搜索接口风控 412），
+           已显示其余指标，请稍后重试或降低页数。</div>` : '';
+      box.innerHTML = `${warn}<div class="card">
+        <div class="video-bar">
+          <b>${esc(j.video.title)}</b><br>
+          UP主 ${esc(j.video.owner || '-')} · ${esc(j.video.bvid)} ·
+          播放 ${esc(j.video.view_text)} · 点赞 ${esc(j.video.like_text)} ·
+          投币 ${esc(j.video.coin_text)} · 收藏 ${esc(j.video.favorite_text)} ·
+          弹幕 ${esc(j.video.danmaku_text)} · 评论 ${esc(j.video.reply_text)}
+          &nbsp;<a class="link" href="https://www.bilibili.com/video/${esc(j.video.bvid)}" target="_blank">打开视频页 →</a>
+        </div>
+        <h3 style="margin-top:14px">标签统计（${j.tags.length} 个，按全量播放量排序，点击标签看曲线）</h3>
+        ${j.tags.map((t, i) => `
+          <div class="dist-row clickable" data-i="${i}">
+            <span class="lb">${esc(t.name)}</span>
+            <span class="track"><span class="fill" style="width:${(t.view_total || 0) / maxView * 100}%"></span></span>
+            <span class="vv"><b>${esc(t.view_text)}</b> · 实测 ${esc(t.sample_text)}（${t.sample} 个）+ 长尾 ${esc(t.tail_text)}</span>
+          </div>`).join('')}
+        <div id="tag-chart"></div>
+        <div style="margin-top:14px"><button class="btn ghost" id="btn-tagcsv">导出标签 CSV</button></div>
+      </div>`;
+
+      document.querySelectorAll('#result-vtag .dist-row.clickable').forEach(el => {
+        el.onclick = () => {
+          document.querySelectorAll('#result-vtag .dist-row.clickable').forEach(x => x.classList.remove('on'));
+          el.classList.add('on');
+          const t = lastTags[+el.dataset.i];
+          document.getElementById('tag-chart').innerHTML = '<div id="tag-weekly"></div>';
+          loadWeeklyInto(t.tag_id, t.name, 'tag-weekly', 2);
+        };
+      });
+      $('#btn-tagcsv').onclick = exportTagCSV;
+    } catch (e) {
+      showErr(box, e);
+    } finally {
+      $('#btn-vtag').disabled = false;
+    }
+  }
+
+  async function loadWeekly(tagName, pages) {
+    const box = document.getElementById('weekly-box');
+    if (!box) return;
+    box.innerHTML = '';
+    await loadWeeklyInto(null, tagName, 'weekly-box', pages);
+  }
+
+  function lineChart(w, step) {
+    step = step || 30;
+    const n = w.length;
+    if (!n) return '';
+    const W = Math.max(720, n * step);
+    const H = 320;
+    const PL = 56, PR = 16, PT = 34, PB = 66;
+    const plotW = W - PL - PR;
+    const plotH = H - PT - PB;
+    const maxV = Math.max(...w.map(x => x.view), 1);
+    const ticks = 4;
+    let grid = '', ylab = '';
+    for (let k = 0; k <= ticks; k++) {
+      const v = maxV * k / ticks;
+      const y = PT + plotH * (1 - k / ticks);
+      grid += `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="#eef0f4"/>`;
+      ylab += `<text x="${PL - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#9aa">${fmtShort(v)}</text>`;
+    }
+    const X = i => PL + (n === 1 ? plotW / 2 : plotW * i / (n - 1));
+    const Y = v => PT + plotH * (1 - v / maxV);
+    const pts = w.map((x, i) => `${X(i).toFixed(1)},${Y(x.view).toFixed(1)}`).join(' ');
+    const cnt = w.reduce((a, b) => a + b.count, 0);
+    const corner = `<text x="${W - PR}" y="${PT - 14}" text-anchor="end" font-size="12" fill="#4a9" font-weight="600">共抽样 ${cnt} 个视频</text>`;
+    let circles = '', labels = '', xlabels = '';
+    w.forEach((x, i) => {
+      const cx = X(i), cy = Y(x.view);
+      const start = (x.range || '').split('~')[0];
+      circles += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2" style="fill:var(--pink)">`
+        + `<title>${esc(x.range)} · ${esc(x.view_text)} · ${x.count}个</title></circle>`;
+      if (i % 4 === 0 || i === n - 1)
+        labels += `<text x="${cx.toFixed(1)}" y="${(cy - 9).toFixed(1)}" text-anchor="middle" font-size="10" fill="#555">${esc(x.view_text)}</text>`;
+      xlabels += `<text x="${cx.toFixed(1)}" y="${H - PB + 16}" text-anchor="middle" font-size="9" fill="#9aa">${esc(x.label)}</text>`;
+      xlabels += `<text x="${cx.toFixed(1)}" y="${H - PB + 30}" text-anchor="middle" font-size="9" fill="#7a7">${esc(start)}</text>`;
+    });
+    return `<div style="overflow-x:auto;cursor:zoom-in" onclick="openWeeklyBig()"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
+      ${grid}${ylab}${corner}
+      <polyline points="${pts}" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+      ${circles}${labels}${xlabels}
+    </svg></div>`;
+  }
+
+  let lastWeekly = [];
+  function openWeeklyBig() {
+    const m = document.getElementById('chart-modal');
+    if (!m || !lastWeekly.length) return;
+    document.getElementById('chart-modal-body').innerHTML = lineChart(lastWeekly, 54);
+    m.style.display = 'flex';
+  }
+  function closeWeeklyBig() {
+    const m = document.getElementById('chart-modal');
+    if (m) m.style.display = 'none';
+  }
+
+  async function loadWeeklyInto(tagId, tagName, boxId, pages) {
+    const box = document.getElementById(boxId);
+    if (!box) return;
+    box.innerHTML = '<div class="chart"><div class="hd"><h4>近 48 周 · 每周新发布视频播放量</h4></div>'
+      + '<div class="state"><div class="spinner"></div>正在抓取近期新发布视频…</div></div>';
+    try {
+      const q = tagId || tagName;    // 优先用 tag_id，精确匹配标签
+      const j = await call(`/api/tag/weekly?q=${encodeURIComponent(q)}&pages=${pages}`);
+      const w = j.weeks || [];
+      lastWeekly = w;
+      const total = w.reduce((a, b) => a + b.view, 0);
+      box.innerHTML = `<div class="chart">
+        <div class="hd"><h4>近 48 周 · 每周新发布视频播放量</h4>
+          <span style="font-size:12px;color:var(--sub)">合计 ${esc(fmtShort(total))}</span>
+          <button style="border:1px solid var(--line);background:#fafbfc;border-radius:9px;padding:4px 10px;font-size:12px;cursor:pointer" onclick="openWeeklyBig()">查看大图</button></div>
+        ${lineChart(w)}
+        <div class="tip">每周独立按「发布时间区间」筛选并按播放量采样，各周样本量一致，可横向比较。
+          周次越靠后发布时间越晚，累计播放量通常越低。${j.truncated ? '<br>注意：部分周样本已达页数上限，可能被截断，可提高页数。' : ''}</div>
+      </div>`;
+    } catch (e) {
+      box.innerHTML = `<div class="chart"><div class="err">加载失败：${esc(e.message)}</div></div>`;
+    }
+  }
+
+  function exportTagCSV() {
+    const head = ['tag_id', '标签', '总播放量', '样本视频数', '使用视频数'];
+    const rows = lastTags.map(t => [t.tag_id, t.name, t.view_total ?? '', t.sample, t.use ?? '']);
+    const csv = '\uFEFF' + [head, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'bili_video_tags.csv';
+    a.click();
+  }
+
+  /* ---------------- 按标签查总播放量 ---------------- */
+  $('#tagname').addEventListener('keydown', e => { if (e.key === 'Enter') doTag(); });
+  $('#btn-tag').onclick = doTag;
+
+  async function doTag() {
+    const q = $('#tagname').value.trim();
+    const box = $('#result-tag');
+    if (!q) { box.innerHTML = '<div class="err">请输入标签名或 tag_id</div>'; return; }
+    box.innerHTML = loading;
+    $('#btn-tag').disabled = true;
+    try {
+      const j = await call(`/api/tag?q=${encodeURIComponent(q)}&pages=${$('#tpages').value}`);
+      const t = j.tag;
+      const warn = j.warning
+        ? `<div class="err">采样未完成：${esc(j.warning)}<br>已显示该标签的基础信息，播放量数据请稍后重试。</div>` : '';
+      box.innerHTML = `${warn}<div class="card">
+        <h3>#${esc(t.name)}#（tag_id=${t.tag_id}）</h3>
+        <div class="tiles">
+          <div class="tile"><span>全量播放量（估算）</span><b>${esc(t.view_text)}</b><i>${num(t.view_total)}</i></div>
+          <div class="tile"><span>实测部分</span><b>${esc(t.sample_text)}</b><i>${t.sample} 个视频（确定值）</i></div>
+          <div class="tile"><span>长尾外推</span><b>${esc(t.tail_text)}</b><i>Zipf 幂律 α=${esc(t.alpha_text)}</i></div>
+        </div>
+        <div id="weekly-box"></div>
+      </div>`;
+      loadWeekly(t.name, 2);
+    } catch (e) {
+      showErr(box, e);
+    } finally {
+      $('#btn-tag').disabled = false;
+    }
+  }
+</script>
+
+<div id="chart-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;align-items:center;justify-content:center"
+     onclick="if(event.target===this)closeWeeklyBig()">
+  <div style="background:#fff;border-radius:14px;padding:18px;max-width:95vw;max-height:92vh;overflow:auto;position:relative">
+    <button onclick="closeWeeklyBig()"
+            style="position:absolute;right:10px;top:8px;border:none;background:#eee;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1">×</button>
+    <h4 style="margin:0 0 12px">近 48 周 · 每周新发布视频播放量（大图）</h4>
+    <div id="chart-modal-body"></div>
+  </div>
+</div>
+</body>
+</html>

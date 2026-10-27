@@ -1,0 +1,18 @@
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5173
+Press CTRL+C to quit
+127.0.0.1 - - [27/Oct/2026 02:29:26] "GET /api/vtag?video=BV1Yunh6FECN HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:29:26] "GET /api/tag/series?tag_id=37656829&mode=day HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:30:43] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:30:43] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:30:43] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:31:43] "GET /api/vtag?video=BV1Yunh6FECN HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:31:51] "GET /api/tag/series?tag_id=37656829&mode=day HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:31:56] "GET /api/tag/series?tag_id=37656829&mode=month HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:32:00] "GET /api/tag/series?tag_id=37656829&mode=day HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:32:36] "GET /api/tag/series?tag_id=26196933&mode=day HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:32:44] "GET /api/tag/series?tag_id=26196933&mode=month HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:32:45] "GET /api/tag/series?tag_id=26196933&mode=day HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:33:04] "GET /api/tag/series?tag_id=180404&mode=day HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:33:06] "GET /api/tag/series?tag_id=26196933&mode=day HTTP/1.1" 200 -
+127.0.0.1 - - [27/Oct/2026 02:33:07] "GET /api/tag/series?tag_id=17039&mode=day HTTP/1.1" 200 -
